@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>달력</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+  }
+  .calendar {
+    width: 300px;
+    margin: 0 auto;
+  }
+  .calendar-header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .calendar-header button {
+    cursor: pointer;
+  }
+  .calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .calendar-table th, .calendar-table td {
+    padding: 5px;
+    text-align: center;
+    border: 1px solid #ccc;
+  }
+  .selected {
+    background-color: lightblue;
+  }
+  .comment {
+    font-style: italic;
+    color: green;
+  }
+</style>
+</head>
+<body>
+
+    <div>
+        <label for="commentInput">주석 추가:</label>
+        <input type="text" id="commentInput">
+        <button onclick="addComment()">추가</button>
+      </div>
+      <div id="commentContainer"></div>
+
+<div class="calendar">
+  <div class="calendar-header">
+    <button onclick="previousMonth()">이전 달</button>
+    <span id="currentMonthYear"></span>
+    <button onclick="nextMonth()">다음 달</button>
+  </div>
+  <table class="calendar-table" id="calendarTable">
+    <thead>
+      <tr>
+        <th>일</th>
+        <th>월</th>
+        <th>화</th>
+        <th>수</th>
+        <th>목</th>
+        <th>금</th>
+        <th>토</th>
+      </tr>
+    </thead>
+    <tbody id="calendarBody">
+    </tbody>
+  </table>
+</div>
+
+<script>
+  let currentDate = new Date();
+  let selectedDate = null;
+  let comments = {};
+
+  function renderCalendar() {
+    const calendarBody = document.getElementById('calendarBody');
+    const calendarTable = document.getElementById('calendarTable');
+    const currentMonthYear = document.getElementById('currentMonthYear');
+    calendarBody.innerHTML = '';
+    currentMonthYear.textContent = `${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월`;
+
+    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
+
+    let date = 1;
+    for (let i = 0; i < 6; i++) {
+      const row = document.createElement('tr');
+      for (let j = 0; j < 7; j++) {
+        const cell = document.createElement('td');
+        if (i === 0 && j < firstDayOfMonth) {
+          const prevMonthLastDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
+          const prevMonthDay = prevMonthLastDate - firstDayOfMonth + j + 1;
+          cell.textContent = prevMonthDay;
+          cell.classList.add('prev-month');
+        } else if (date > daysInMonth) {
+          const nextMonthDay = date - daysInMonth;
+          cell.textContent = nextMonthDay;
+          cell.classList.add('next-month');
+          date++;
+        } else {
+          cell.textContent = date;
+          if (date === currentDate.getDate() && currentDate.getMonth() === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear()) {
+            cell.classList.add('selected');
+          }
+          date++;
+        }
+        cell.addEventListener('click', function() {
+          selectDate(this);
+        });
+        row.appendChild(cell);
+      }
+      calendarBody.appendChild(row);
+    }
+  }
+
+  function selectDate(cell) {
+    const selectedCells = document.querySelectorAll('.selected');
+    selectedCells.forEach(cell => cell.classList.remove('selected'));
+    cell.classList.add('selected');
+    selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), parseInt(cell.textContent));
+    renderComments();
+  }
+
+ 
+
+  function previousMonth() {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  }
+
+  function nextMonth() {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  }
+
+  window.onload = function() {
+    renderCalendar();
+  };
+
+  // 이전에 저장된 주석을 로드합니다.
+function loadComments() {
+  const storedComments = localStorage.getItem('comments');
+  if (storedComments) {
+    comments = JSON.parse(storedComments);
+    renderComments();
+  }
+}
+
+// 주석을 추가합니다.
+function addComment() {
+  const commentInput = document.getElementById('commentInput').value;
+  if (!selectedDate) {
+    alert('날짜를 선택하세요.');
+    return;
+  }
+  if (!comments[selectedDate.toDateString()]) {
+    comments[selectedDate.toDateString()] = [];
+  }
+  comments[selectedDate.toDateString()].push(commentInput);
+  saveComments(); // 변경된 부분
+  renderComments();
+}
+
+
+// 주석을 삭제합니다.
+function deleteComment(index) {
+  if (selectedDate && comments[selectedDate.toDateString()] && index >= 0 && index < comments[selectedDate.toDateString()].length) {
+    comments[selectedDate.toDateString()].splice(index, 1);
+    saveComments(); // 변경된 부분
+    renderComments();
+  }
+}
+
+// 주석을 저장합니다.
+function saveComments() {
+  localStorage.setItem('comments', JSON.stringify(comments));
+}
+
+// 주석을 렌더링합니다.
+function renderComments() {
+  const commentContainer = document.getElementById('commentContainer');
+  commentContainer.innerHTML = '';
+  if (selectedDate && comments[selectedDate.toDateString()]) {
+    const commentList = comments[selectedDate.toDateString()];
+    commentList.forEach((comment, index) => {
+      const commentElement = document.createElement('div');
+      commentElement.textContent = comment;
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = '삭제';
+      deleteButton.addEventListener('click', function() {
+        deleteComment(index);
+      });
+      commentElement.appendChild(deleteButton);
+      commentContainer.appendChild(commentElement);
+    });
+  }
+}
+// 페이지 로드 시 이전에 저장된 주석을 로드합니다.
+window.onload = function() {
+  loadComments();
+  renderCalendar();
+};
+
+// 이전에 저장된 주석을 로드합니다.
+function loadComments() {
+  const storedComments = localStorage.getItem('comments');
+  if (storedComments) {
+    comments = JSON.parse(storedComments);
+  }
+}
+window.onbeforeunload = function() {
+  saveComments();
+};
+</script>
+
+</body>
+</html>
